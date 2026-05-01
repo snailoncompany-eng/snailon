@@ -19,6 +19,12 @@ export default async function CheckoutPage() {
 
   return (
     <main className="grain min-h-screen bg-cream text-ink">
+      {/* Pre-warm Whop's checkout assets so the iframe mounts faster */}
+      <link rel="preconnect" href="https://js.whop.com" />
+      <link rel="preconnect" href="https://api.whop.com" />
+      <link rel="dns-prefetch" href="https://whop.com" />
+      <link rel="preload" as="script" href="https://js.whop.com/static/checkout/loader.js" />
+
       <nav className="flex items-center justify-between px-6 md:px-12 py-6 border-b border-sand">
         <Link href="/" className="serif text-2xl tracking-tightest">
           snailon

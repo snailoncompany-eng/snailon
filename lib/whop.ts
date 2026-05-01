@@ -52,6 +52,10 @@ export async function createDynamicPlan(args: CreatePlanArgs): Promise<{
     visibility: "hidden",
     initial_price: args.amountMad,
     base_currency: WHOP_CHECKOUT_CURRENCY,
+    // Critical: without these flags, Whop defaults to stock=0 and shows
+    // "Out of stock" in the embedded checkout.
+    unlimited_stock: true,
+    one_per_user: false,
     internal_notes: `snailon|merchant=${args.merchantId}|mad=${args.amountMad}|bonus=${args.bonusMad}|founding=${args.isFounding}|tier=${args.tierLabel}`,
     metadata: {
       merchant_id: args.merchantId,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import type { Tier } from "@/lib/pricing";
 
 const WHOP_LOADER = "https://js.whop.com/static/checkout/loader.js";
@@ -11,6 +11,11 @@ declare global {
   }
 }
 
+type SessionState =
+  | { status: "loading" }
+  | { status: "ready"; planId: string }
+  | { status: "error"; message: string };
+
 export default function CheckoutClient({
   tiers,
   isAlreadyFounding,
@@ -19,56 +24,80 @@ export default function CheckoutClient({
   isAlreadyFounding: boolean;
 }) {
   const [selected, setSelected] = useState<Tier | null>(null);
-  const [planId, setPlanId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-  const checkoutMountRef = useRef<HTMLDivElement>(null);
+  // Plan IDs are pre-created in parallel on mount and cached here.
+  const [sessions, setSessions] = useState<Record<string, SessionState>>({});
 
-  // Load Whop's checkout loader script once.
+  // Pre-warm Whop's loader script as early as possible.
   useEffect(() => {
     if (document.querySelector(`script[src="${WHOP_LOADER}"]`)) return;
     const s = document.createElement("script");
     s.src = WHOP_LOADER;
     s.async = true;
-    s.defer = true;
     document.head.appendChild(s);
   }, []);
 
-  async function pickTier(tier: Tier) {
+  // On mount, kick off plan creation for every visible tier in parallel.
+  // By the time the user clicks one, the plan_id is already in memory.
+  useEffect(() => {
+    const visibleTiers = tiers.filter((t) => !(t.isFounding && isAlreadyFounding));
+    setSessions(
+      Object.fromEntries(visibleTiers.map((t) => [t.id, { status: "loading" } as SessionState]))
+    );
+
+    visibleTiers.forEach(async (tier) => {
+      try {
+        const res = await fetch("/api/checkout/create-session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tier_id: tier.id }),
+        });
+        const j = await res.json();
+        if (!res.ok) throw new Error(j.error ?? "could not create session");
+        setSessions((prev) => ({
+          ...prev,
+          [tier.id]: { status: "ready", planId: j.plan_id },
+        }));
+      } catch (e: any) {
+        setSessions((prev) => ({
+          ...prev,
+          [tier.id]: { status: "error", message: e.message ?? "checkout error" },
+        }));
+      }
+    });
+  }, [tiers, isAlreadyFounding]);
+
+  function pickTier(tier: Tier) {
     if (selected?.id === tier.id) return;
     setSelected(tier);
-    setPlanId(null);
-    setErr(null);
-    setLoading(true);
-    try {
-      const res = await fetch("/api/checkout/create-session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tier_id: tier.id }),
-      });
-      const j = await res.json();
-      if (!res.ok) throw new Error(j.error ?? "could not create session");
-      setPlanId(j.plan_id);
-    } catch (e: any) {
-      setErr(e.message ?? "checkout error");
-    } finally {
-      setLoading(false);
-    }
+    // Smooth scroll to the iframe area on mobile
+    requestAnimationFrame(() => {
+      document.getElementById("checkout-mount")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
   }
+
+  const sel = selected ? sessions[selected.id] : null;
+  const returnUrl =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/checkout/complete?tier=${selected?.id ?? ""}`
+      : "";
 
   return (
     <div className="mt-12">
       {/* Tier grid */}
       <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {tiers.map((tier) => (
-          <TierCard
-            key={tier.id}
-            tier={tier}
-            selected={selected?.id === tier.id}
-            onSelect={() => pickTier(tier)}
-            disabled={tier.isFounding && isAlreadyFounding}
-          />
-        ))}
+        {tiers.map((tier) => {
+          const session = sessions[tier.id];
+          return (
+            <TierCard
+              key={tier.id}
+              tier={tier}
+              selected={selected?.id === tier.id}
+              onSelect={() => pickTier(tier)}
+              disabled={tier.isFounding && isAlreadyFounding}
+              loading={!session || session.status === "loading"}
+            />
+          );
+        })}
       </div>
 
       {isAlreadyFounding && (
@@ -77,9 +106,9 @@ export default function CheckoutClient({
         </p>
       )}
 
-      {/* Selected tier summary */}
+      {/* Selected tier summary + iframe */}
       {selected && (
-        <div className="mt-12 grid md:grid-cols-[1fr_2fr] gap-8">
+        <div id="checkout-mount" className="mt-12 grid md:grid-cols-[1fr_2fr] gap-8 scroll-mt-8">
           <aside className="border border-sand p-6 h-fit">
             <p className="mono text-[10px] uppercase tracking-[0.2em] text-clay">order summary</p>
             <p className="serif text-3xl tracking-tightest mt-2">{selected.label}</p>
@@ -108,29 +137,23 @@ export default function CheckoutClient({
             )}
           </aside>
 
-          {/* Whop embedded checkout */}
           <div>
             <p className="mono text-[10px] uppercase tracking-[0.2em] text-clay mb-3">
               secure payment · powered by whop
             </p>
-            {loading && (
-              <div className="border border-sand p-12 text-center text-clay">
-                Preparing checkout...
-              </div>
-            )}
-            {err && (
+            {(!sel || sel.status === "loading") && <CheckoutSkeleton />}
+            {sel?.status === "error" && (
               <div className="border border-terracotta p-4 text-terracotta text-sm">
-                {err}
+                {sel.message}
               </div>
             )}
-            {planId && !loading && (
+            {sel?.status === "ready" && (
+              // The `key` forces React to remount when planId changes (tier swap)
               <div
-                key={planId}
-                ref={checkoutMountRef}
-                data-whop-checkout-plan-id={planId}
+                key={sel.planId}
+                data-whop-checkout-plan-id={sel.planId}
                 data-whop-checkout-theme="light"
-                data-whop-checkout-skip-redirect="false"
-                data-whop-checkout-return-url={`${typeof window !== "undefined" ? window.location.origin : ""}/checkout/complete?tier=${selected.id}`}
+                data-whop-checkout-return-url={returnUrl}
                 className="min-h-[600px]"
               />
             )}
@@ -152,11 +175,13 @@ function TierCard({
   selected,
   onSelect,
   disabled,
+  loading,
 }: {
   tier: Tier;
   selected: boolean;
   onSelect: () => void;
   disabled: boolean;
+  loading: boolean;
 }) {
   const orders = Math.floor(tier.totalCreditMad / 5);
   const baseClasses = "relative text-left p-5 border transition-colors";
@@ -215,6 +240,33 @@ function TierCard({
           {tier.tagline}
         </p>
       )}
+      {loading && !disabled && (
+        <span
+          className={`absolute top-3 right-3 mono text-[9px] uppercase tracking-wider ${
+            selected ? "text-cream/60" : "text-clay/60"
+          }`}
+        >
+          ↻
+        </span>
+      )}
     </button>
+  );
+}
+
+function CheckoutSkeleton() {
+  return (
+    <div className="border border-sand min-h-[600px] p-6 space-y-4 animate-pulse">
+      <div className="h-3 bg-sand w-1/4" />
+      <div className="h-10 bg-sand w-full" />
+      <div className="h-3 bg-sand w-1/3 mt-6" />
+      <div className="h-10 bg-sand w-full" />
+      <div className="grid grid-cols-2 gap-3 mt-2">
+        <div className="h-10 bg-sand" />
+        <div className="h-10 bg-sand" />
+      </div>
+      <div className="h-3 bg-sand w-1/4 mt-6" />
+      <div className="h-10 bg-sand w-full" />
+      <div className="h-12 bg-ink/20 w-full mt-6" />
+    </div>
   );
 }
