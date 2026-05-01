@@ -71,7 +71,6 @@ export default function IntegrationsClient({
       if (!res.ok) throw new Error(j.error ?? "couldn't connect");
       setResult(j);
       setStage("result");
-      // Refresh the connected list in the background
       router.refresh();
     } catch (e: any) {
       setErr(e.message);
@@ -86,21 +85,18 @@ export default function IntegrationsClient({
   }
 
   return (
-    <div className="mt-12 space-y-12">
-      {/* THE BIG CONNECT INPUT */}
+    <div className="space-y-10">
       {stage !== "result" && (
-        <section className="border border-sand p-8 md:p-10 bg-sand/30">
-          <p className="mono text-[10px] uppercase tracking-[0.25em] text-terracotta">
-            ⌬ &nbsp; one-click connect
-          </p>
-          <h2 className="serif text-3xl md:text-4xl tracking-tightest mt-2">
+        <section className="card p-6 sm:p-8">
+          <p className="eyebrow eyebrow-accent">one-click connect</p>
+          <h2 className="font-display text-2xl sm:text-3xl tracking-tight mt-2">
             Paste your store address.
           </h2>
-          <p className="text-clay text-sm mt-1">
+          <p className="text-muted text-sm mt-1">
             Works with Shopify, WooCommerce, YouCan, and any other site.
           </p>
 
-          <form onSubmit={quickConnect} className="mt-6 flex flex-col md:flex-row gap-3">
+          <form onSubmit={quickConnect} className="mt-6 flex flex-col sm:flex-row gap-3">
             <input
               type="text"
               autoFocus
@@ -108,33 +104,35 @@ export default function IntegrationsClient({
               onChange={(e) => setUrl(e.target.value)}
               placeholder="yourstore.com"
               disabled={stage === "detecting"}
-              className="flex-1 bg-cream border border-ink/20 focus:border-terracotta outline-none px-4 py-4 text-lg placeholder:text-clay/50 disabled:opacity-60"
+              className="input input-lg flex-1"
             />
             <button
               type="submit"
               disabled={stage === "detecting" || !url.trim()}
-              className="bg-ink text-cream px-8 py-4 mono text-xs uppercase tracking-[0.2em] hover:bg-terracotta transition-colors disabled:opacity-50 whitespace-nowrap"
+              className="btn btn-primary px-6"
             >
-              {stage === "detecting" ? "scanning..." : "connect →"}
+              {stage === "detecting" ? "scanning..." : "Connect"}
+              {stage !== "detecting" && <span aria-hidden>→</span>}
             </button>
           </form>
 
           {err && (
-            <p className="text-terracotta text-sm mt-3 mono">{err}</p>
+            <div className="mt-3 rounded-md bg-[#FFE9E9] border border-[#F4C5C5] p-3">
+              <p className="text-error text-sm">{err}</p>
+            </div>
           )}
 
           {stage === "detecting" && <DetectingProgress />}
 
-          <div className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-[11px] mono uppercase tracking-[0.18em] text-clay">
-            <span>✓ no API keys</span>
-            <span>✓ no copy-paste</span>
-            <span>✓ catalog in seconds</span>
-            <span>✓ orders in real time</span>
+          <div className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted">
+            <span className="flex items-center gap-1.5"><span className="dot bg-success" />no API keys</span>
+            <span className="flex items-center gap-1.5"><span className="dot bg-success" />no copy-paste</span>
+            <span className="flex items-center gap-1.5"><span className="dot bg-success" />catalog in seconds</span>
+            <span className="flex items-center gap-1.5"><span className="dot bg-success" />orders real-time</span>
           </div>
         </section>
       )}
 
-      {/* RESULT VIEW */}
       {stage === "result" && result && (
         <ResultPanel
           result={result}
@@ -147,11 +145,10 @@ export default function IntegrationsClient({
         />
       )}
 
-      {/* CONNECTED LIST */}
       {connectedStores.length > 0 && stage !== "result" && (
         <section>
-          <h2 className="serif text-2xl tracking-tightest">Connected.</h2>
-          <div className="mt-4 space-y-3">
+          <h2 className="font-display text-2xl tracking-tight mb-4">Connected stores</h2>
+          <div className="space-y-3">
             {connectedStores.map((s) => (
               <ConnectedRow key={s.id} conn={s} onDisconnect={() => disconnect(s.id)} />
             ))}
@@ -159,23 +156,20 @@ export default function IntegrationsClient({
         </section>
       )}
 
-      {/* CARRIERS */}
       {connectedCarriers.length > 0 && stage !== "result" && (
         <section>
-          <p className="mono text-[10px] uppercase tracking-[0.25em] text-clay">delivery</p>
-          <h2 className="serif text-2xl tracking-tightest mt-1">Delivery partner.</h2>
-          <div className="mt-4 space-y-3">
+          <h2 className="font-display text-2xl tracking-tight mb-4">Delivery</h2>
+          <div className="space-y-3">
             {connectedCarriers.map((c) => (
-              <div key={c.id} className="border border-sand p-5 flex items-center gap-4 flex-wrap">
+              <div key={c.id} className="card p-5 flex items-center gap-4 flex-wrap">
                 <Monogram letter="F" />
-                <div className="flex-1 min-w-[200px]">
-                  <p className="serif text-xl tracking-tightest">ForceLog</p>
-                  <p className="mono text-[11px] text-clay">
-                    {c.metadata?.note ?? "auto-attached"}
-                  </p>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium">ForceLog</p>
+                  <p className="text-xs text-muted">{c.metadata?.note ?? "auto-attached"}</p>
                 </div>
-                <span className="mono text-[10px] uppercase tracking-[0.18em] text-moss">
-                  ✓ ready
+                <span className="pill pill-success">
+                  <span className="dot bg-success" />
+                  ready
                 </span>
               </div>
             ))}
@@ -188,25 +182,24 @@ export default function IntegrationsClient({
 
 function DetectingProgress() {
   return (
-    <div className="mt-6 space-y-2 text-[12px] mono">
-      <p className="text-clay animate-pulse">⌬ resolving your store...</p>
-      <p className="text-clay animate-pulse" style={{ animationDelay: "0.4s" }}>
-        ⌬ probing platform fingerprints...
-      </p>
-      <p className="text-clay animate-pulse" style={{ animationDelay: "0.8s" }}>
-        ⌬ pulling product catalog...
-      </p>
+    <div className="mt-5 space-y-2 text-sm">
+      <ProgressLine label="Resolving your store..." delay={0} />
+      <ProgressLine label="Probing platform fingerprints..." delay={500} />
+      <ProgressLine label="Pulling product catalog..." delay={1100} />
     </div>
   );
 }
 
-function ResultPanel({
-  result,
-  onReset,
-}: {
-  result: QuickConnectResp;
-  onReset: () => void;
-}) {
+function ProgressLine({ label, delay }: { label: string; delay: number }) {
+  return (
+    <div className="flex items-center gap-2 text-muted animate-pulseDot" style={{ animationDelay: `${delay}ms` }}>
+      <span className="dot bg-accent" />
+      <span>{label}</span>
+    </div>
+  );
+}
+
+function ResultPanel({ result, onReset }: { result: QuickConnectResp; onReset: () => void }) {
   const { connection, catalog_preview, catalog_total, next_step, pixel_snippet } = result;
   const platformLabel =
     connection.detected_platform === "shopify"
@@ -218,90 +211,60 @@ function ResultPanel({
       : "Custom site";
 
   return (
-    <section className="space-y-8">
-      {/* Hero result */}
-      <div className="border border-moss p-6 md:p-8 bg-cream">
+    <section className="space-y-6 animate-rise">
+      <div className="card p-6 sm:p-8 border-success bg-success-soft/40">
         <div className="flex items-center gap-2">
-          <span className="serif text-2xl text-moss">✓</span>
-          <p className="mono text-[10px] uppercase tracking-[0.25em] text-moss">
-            store detected · {platformLabel}
-          </p>
+          <span className="text-success text-xl leading-none">✓</span>
+          <p className="eyebrow text-success">store detected · {platformLabel}</p>
         </div>
-        <h2 className="serif text-4xl tracking-tightest mt-2">
-          {connection.store_name}
-        </h2>
-        <p className="mono text-[11px] text-clay mt-1">{connection.store_url}</p>
+        <h2 className="font-display text-3xl tracking-tight mt-2">{connection.store_name}</h2>
+        <p className="font-mono text-xs text-muted mt-1 break-all">{connection.store_url}</p>
 
         {catalog_total > 0 ? (
           <div className="mt-6">
-            <p className="mono text-[10px] uppercase tracking-[0.2em] text-clay">
-              {catalog_total} products imported
-            </p>
-            <div className="mt-2 grid sm:grid-cols-2 gap-2">
+            <p className="eyebrow">{catalog_total} products imported</p>
+            <div className="mt-3 grid sm:grid-cols-2 gap-2">
               {catalog_preview.slice(0, 6).map((p, i) => (
-                <div key={i} className="flex justify-between text-sm border-b border-sand pb-1">
-                  <span className="truncate pr-2">{p.name}</span>
-                  <span className="mono text-clay shrink-0">{Number(p.price_mad).toFixed(0)} MAD</span>
+                <div key={i} className="flex justify-between gap-3 text-sm border-b border-line pb-2">
+                  <span className="truncate min-w-0">{p.name}</span>
+                  <span className="font-mono text-muted shrink-0">{Number(p.price_mad).toFixed(0)} MAD</span>
                 </div>
               ))}
             </div>
           </div>
         ) : (
-          <p className="text-[12px] text-clay mt-4">
+          <p className="text-sm text-muted mt-4">
             Catalog not publicly accessible. We'll sync it after the next step.
           </p>
         )}
       </div>
 
-      {/* Next step */}
       <NextStepCard step={next_step} connectionId={connection.id} pixelSnippet={pixel_snippet} />
 
-      <div className="flex gap-3">
-        <button
-          onClick={onReset}
-          className="mono text-[11px] uppercase tracking-[0.18em] text-clay hover:text-terracotta"
-        >
-          ← connect another store
-        </button>
-      </div>
+      <button onClick={onReset} className="btn-link text-sm">
+        ← connect another store
+      </button>
     </section>
   );
 }
 
-function NextStepCard({
-  step,
-  connectionId,
-  pixelSnippet,
-}: {
-  step: any;
-  connectionId: string;
-  pixelSnippet: string;
-}) {
+function NextStepCard({ step, connectionId, pixelSnippet }: { step: any; connectionId: string; pixelSnippet: string }) {
   const [done, setDone] = useState(false);
-
   if (!step) return null;
-
   return (
-    <div className="border border-sand p-6 md:p-8">
-      <p className="mono text-[10px] uppercase tracking-[0.25em] text-terracotta">
-        ⌬ &nbsp; finish setup
-      </p>
-      <h3 className="serif text-2xl tracking-tightest mt-2">{step.title}</h3>
-      <p className="text-clay text-sm mt-2 max-w-xl">{step.description}</p>
+    <div className="card p-6 sm:p-8">
+      <p className="eyebrow eyebrow-accent">finish setup</p>
+      <h3 className="font-display text-2xl tracking-tight mt-2">{step.title}</h3>
+      <p className="text-muted text-sm mt-2 max-w-xl">{step.description}</p>
 
       {step.kind === "woocommerce_auto_auth" && (
-        <a
-          href={step.url}
-          className="inline-block mt-6 bg-ink text-cream px-6 py-3 mono text-xs uppercase tracking-[0.2em] hover:bg-terracotta transition-colors"
-        >
+        <a href={step.url} className="btn btn-primary mt-5">
           {step.cta}
         </a>
       )}
-
       {step.kind === "shopify_install_app" && (
         <ShopifyStep step={step} connectionId={connectionId} onDone={() => setDone(true)} done={done} />
       )}
-
       {step.kind === "youcan_paste_token" && (
         <TokenPasteStep
           connectionId={connectionId}
@@ -311,14 +274,10 @@ function NextStepCard({
           done={done}
         />
       )}
+      {step.kind === "pixel_only" && <PixelStep snippet={pixelSnippet} />}
 
-      {step.kind === "pixel_only" && (
-        <PixelStep snippet={pixelSnippet} />
-      )}
-
-      <p className="mono text-[10px] uppercase tracking-[0.18em] text-clay mt-6 leading-relaxed">
-        Or skip for now — we'll keep the catalog you already have. Orders won't
-        flow in real-time until you finish.
+      <p className="text-xs text-muted mt-6">
+        Or skip for now — we'll keep the catalog. Orders won't sync in real-time until you finish.
       </p>
     </div>
   );
@@ -336,15 +295,15 @@ function ShopifyStep({
   done: boolean;
 }) {
   return (
-    <div className="mt-6 space-y-6">
-      {/* If our Shopify app isn't published yet, install URL is incomplete.
-          Show fallback paste path always, plus the install link if configured. */}
+    <div className="mt-5">
       <TokenPasteStep
         connectionId={connectionId}
-        fields={step.fallback?.fields ?? [
-          { key: "admin_api_token", label: "Admin API token", type: "password", placeholder: "shpat_..." },
-          { key: "api_secret_key", label: "API secret key", type: "password" },
-        ]}
+        fields={
+          step.fallback?.fields ?? [
+            { key: "admin_api_token", label: "Admin API token", type: "password", placeholder: "shpat_..." },
+            { key: "api_secret_key", label: "API secret key", type: "password" },
+          ]
+        }
         onDone={onDone}
         done={done}
       />
@@ -391,44 +350,39 @@ function TokenPasteStep({
 
   if (done) {
     return (
-      <p className="mt-6 mono text-[11px] uppercase tracking-[0.18em] text-moss">
-        ✓ orders will now sync in real time
-      </p>
+      <div className="mt-5 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-success-soft">
+        <span className="text-success">✓</span>
+        <span className="text-sm text-success font-medium">Orders will now sync in real time</span>
+      </div>
     );
   }
 
   return (
-    <form onSubmit={submit} className="mt-6 space-y-3 max-w-md">
+    <form onSubmit={submit} className="mt-5 space-y-3 max-w-md">
       {fields.map((f) => (
         <div key={f.key}>
-          <label className="block mono text-[10px] uppercase tracking-[0.2em] text-clay mb-1">
-            {f.label}
-          </label>
+          <label className="eyebrow block mb-1.5">{f.label}</label>
           <input
             type={f.type as any}
             placeholder={f.placeholder}
             value={values[f.key] ?? ""}
             onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))}
-            className="w-full bg-transparent border-b border-ink/30 focus:border-terracotta outline-none py-2 text-sm"
+            className="input"
           />
         </div>
       ))}
-      {err && <p className="text-terracotta text-sm">{err}</p>}
+      {err && (
+        <div className="rounded-md bg-[#FFE9E9] border border-[#F4C5C5] p-2.5">
+          <p className="text-error text-sm">{err}</p>
+        </div>
+      )}
       <div className="flex gap-3 items-center pt-2">
-        <button
-          type="submit"
-          disabled={loading}
-          className="bg-ink text-cream px-6 py-3 mono text-xs uppercase tracking-[0.2em] hover:bg-terracotta transition-colors disabled:opacity-50"
-        >
-          {loading ? "verifying..." : "finish setup →"}
+        <button type="submit" disabled={loading} className="btn btn-primary">
+          {loading ? "verifying..." : "Finish setup"}
+          {!loading && <span aria-hidden>→</span>}
         </button>
         {guideUrl && (
-          <a
-            href={guideUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="mono text-[11px] uppercase tracking-[0.18em] text-clay hover:text-terracotta"
-          >
+          <a href={guideUrl} target="_blank" rel="noreferrer" className="btn-link text-sm">
             where do I find this? ↗
           </a>
         )}
@@ -440,12 +394,11 @@ function TokenPasteStep({
 function PixelStep({ snippet }: { snippet: string }) {
   const [copied, setCopied] = useState(false);
   return (
-    <div className="mt-6">
-      <p className="text-[12px] text-clay mb-2">
-        Paste this snippet into your store's theme footer (just before
-        <code className="mono mx-1">&lt;/body&gt;</code>):
+    <div className="mt-5">
+      <p className="text-sm text-muted mb-2">
+        Paste this snippet into your store's theme footer (just before <code className="font-mono">&lt;/body&gt;</code>):
       </p>
-      <pre className="mono text-[11px] bg-ink text-cream p-3 overflow-x-auto whitespace-pre-wrap break-all">
+      <pre className="font-mono text-xs bg-ink text-white p-3 rounded-md overflow-x-auto whitespace-pre-wrap break-all">
         {snippet}
       </pre>
       <button
@@ -454,9 +407,9 @@ function PixelStep({ snippet }: { snippet: string }) {
           setCopied(true);
           setTimeout(() => setCopied(false), 2000);
         }}
-        className="mt-3 mono text-[11px] uppercase tracking-[0.18em] border border-ink px-4 py-2 hover:bg-sand transition-colors"
+        className="btn btn-secondary mt-3 text-sm"
       >
-        {copied ? "✓ copied" : "copy snippet"}
+        {copied ? "✓ Copied" : "Copy snippet"}
       </button>
     </div>
   );
@@ -474,26 +427,20 @@ function ConnectedRow({ conn, onDisconnect }: { conn: StoreConn; onDisconnect: (
   const monogram = platformLabel[0];
   const realtime = (conn.capabilities ?? []).includes("orders_realtime");
   return (
-    <div className="border border-sand p-5 flex items-center gap-4 flex-wrap">
+    <div className="card p-4 sm:p-5 flex items-center gap-4 flex-wrap">
       <Monogram letter={monogram} />
-      <div className="flex-1 min-w-[200px]">
-        <p className="serif text-xl tracking-tightest">{conn.store_name ?? conn.store_url}</p>
-        <p className="mono text-[11px] text-clay">
+      <div className="flex-1 min-w-[180px]">
+        <p className="font-medium truncate">{conn.store_name ?? conn.store_url}</p>
+        <p className="text-xs text-muted">
           {platformLabel} · {conn.product_count} products
           {conn.last_synced_at && ` · synced ${timeAgo(conn.last_synced_at)}`}
         </p>
       </div>
-      <span
-        className={`mono text-[10px] uppercase tracking-[0.18em] px-2 py-1 ${
-          realtime ? "bg-moss text-cream" : "bg-sand text-clay"
-        }`}
-      >
+      <span className={realtime ? "pill pill-success" : "pill pill-muted"}>
+        <span className={`dot ${realtime ? "bg-success" : "bg-subtle"}`} />
         {realtime ? "live orders" : conn.pending_step ? "setup pending" : "catalog only"}
       </span>
-      <button
-        onClick={onDisconnect}
-        className="mono text-[11px] uppercase tracking-[0.18em] text-clay hover:text-terracotta"
-      >
+      <button onClick={onDisconnect} className="btn-link text-xs text-muted hover:text-error">
         disconnect
       </button>
     </div>
@@ -502,7 +449,7 @@ function ConnectedRow({ conn, onDisconnect }: { conn: StoreConn; onDisconnect: (
 
 function Monogram({ letter }: { letter: string }) {
   return (
-    <div className="w-12 h-12 border border-ink flex items-center justify-center serif text-2xl tracking-tightest">
+    <div className="w-10 h-10 rounded-md bg-ink text-white flex items-center justify-center font-display text-lg shrink-0">
       {letter}
     </div>
   );

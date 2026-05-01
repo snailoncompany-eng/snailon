@@ -27,15 +27,16 @@ export default async function IntegrationsPage() {
   ]);
 
   return (
-    <div>
-      <p className="mono text-[10px] uppercase tracking-[0.25em] text-terracotta">integrations</p>
-      <h1 className="serif text-5xl tracking-tightest mt-2">
-        Connect your store. <span className="italic text-terracotta">In seconds.</span>
-      </h1>
-      <p className="text-clay mt-2 max-w-xl">
-        Paste your store address. We do the rest — find your products, sync
-        your orders, recover abandoned carts, line up delivery.
-      </p>
+    <div className="space-y-8">
+      <header>
+        <p className="eyebrow eyebrow-accent">integrations</p>
+        <h1 className="headline text-4xl sm:text-5xl mt-2">
+          Connect your store. <span className="italic">In seconds.</span>
+        </h1>
+        <p className="text-muted mt-2 max-w-xl">
+          Paste your store address. We do the rest — find your products, sync your orders, recover abandoned carts, line up delivery.
+        </p>
+      </header>
 
       <IntegrationsClient
         connectedStores={stores ?? []}

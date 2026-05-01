@@ -29,31 +29,39 @@ export default function LoginForm() {
   }
 
   return (
-    <form onSubmit={submit} className="space-y-3">
-      <input
-        type="email"
-        required
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        placeholder="email"
-        className="w-full bg-transparent border-b border-ink/30 focus:border-terracotta outline-none py-3 placeholder:text-clay/50"
-      />
-      <input
-        type="password"
-        required
-        value={pw}
-        onChange={(e) => setPw(e.target.value)}
-        placeholder="password"
-        className="w-full bg-transparent border-b border-ink/30 focus:border-terracotta outline-none py-3 placeholder:text-clay/50"
-      />
-      <button
-        type="submit"
-        disabled={loading}
-        className="w-full bg-ink text-cream py-3 mono text-xs uppercase tracking-[0.2em] hover:bg-terracotta transition-colors disabled:opacity-50 mt-4"
-      >
-        {loading ? "..." : "sign in →"}
+    <form onSubmit={submit} className="space-y-4">
+      <div>
+        <label className="eyebrow block mb-1.5">email</label>
+        <input
+          type="email"
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="your@email.com"
+          className="input input-lg"
+          autoFocus
+        />
+      </div>
+      <div>
+        <label className="eyebrow block mb-1.5">password</label>
+        <input
+          type="password"
+          required
+          value={pw}
+          onChange={(e) => setPw(e.target.value)}
+          placeholder="••••••••"
+          className="input input-lg"
+        />
+      </div>
+      <button type="submit" disabled={loading} className="btn btn-primary w-full mt-2">
+        {loading ? "signing in..." : "Sign in"}
+        {!loading && <span aria-hidden>→</span>}
       </button>
-      {err && <p className="text-terracotta text-sm pt-2">{err}</p>}
+      {err && (
+        <div className="rounded-md bg-[#FFE9E9] border border-[#F4C5C5] p-3">
+          <p className="text-error text-sm">{err}</p>
+        </div>
+      )}
     </form>
   );
 }

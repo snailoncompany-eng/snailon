@@ -32,9 +32,13 @@ export default function WaitlistForm() {
 
   if (state === "ok") {
     return (
-      <div className="border border-ink bg-ink text-cream p-6">
-        <p className="serif text-2xl">You're on the list.</p>
-        <p className="mt-2 text-sm">Check your inbox. We'll write the day before launch.</p>
+      <div className="card p-6 animate-rise">
+        <div className="flex items-center gap-2 mb-2">
+          <span className="dot bg-success" />
+          <span className="eyebrow text-success">on the list</span>
+        </div>
+        <p className="font-display text-2xl tracking-tight">You're in.</p>
+        <p className="text-muted mt-1">Check your inbox — we'll write the day before launch.</p>
       </div>
     );
   }
@@ -46,31 +50,34 @@ export default function WaitlistForm() {
         required
         value={email}
         onChange={(e) => setEmail(e.target.value)}
-        placeholder="email"
-        className="w-full bg-transparent border-b border-ink/30 focus:border-terracotta outline-none py-3 text-base placeholder:text-clay/50"
+        placeholder="your@email.com"
+        className="input input-lg"
       />
-      <input
-        type="tel"
-        value={phone}
-        onChange={(e) => setPhone(e.target.value)}
-        placeholder="WhatsApp number (06... / 07...)"
-        className="w-full bg-transparent border-b border-ink/30 focus:border-terracotta outline-none py-3 text-base placeholder:text-clay/50"
-      />
-      <input
-        type="text"
-        value={biz}
-        onChange={(e) => setBiz(e.target.value)}
-        placeholder="business name (optional)"
-        className="w-full bg-transparent border-b border-ink/30 focus:border-terracotta outline-none py-3 text-base placeholder:text-clay/50"
-      />
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <input
+          type="tel"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          placeholder="WhatsApp number"
+          className="input"
+        />
+        <input
+          type="text"
+          value={biz}
+          onChange={(e) => setBiz(e.target.value)}
+          placeholder="Business (optional)"
+          className="input"
+        />
+      </div>
       <button
         type="submit"
         disabled={state === "loading"}
-        className="w-full bg-ink text-cream py-3 mono text-xs uppercase tracking-[0.2em] hover:bg-terracotta transition-colors disabled:opacity-50"
+        className="btn btn-primary w-full"
       >
-        {state === "loading" ? "..." : "join waitlist →"}
+        {state === "loading" ? "joining..." : "Join the waitlist"}
+        <span aria-hidden>→</span>
       </button>
-      {err && <p className="text-terracotta text-sm">{err}</p>}
+      {err && <p className="text-error text-sm">{err}</p>}
     </form>
   );
 }

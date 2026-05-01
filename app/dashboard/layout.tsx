@@ -1,62 +1,87 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import LogoutButton from "@/components/logout-button";
+import { Logo } from "@/components/ui/logo";
+import { DashNav } from "@/components/dashboard-nav";
+import Link from "next/link";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  // Fetch the merchant row via admin (in case RLS is finicky on first create)
   const admin = createAdminClient();
   const { data: merchant } = await admin
     .from("merchants")
-    .select("id, business_name, email, balance_mad")
+    .select("id, business_name, email, balance_mad, is_founding, founding_bonus_pct")
     .eq("user_id", user.id)
     .maybeSingle();
 
+  const balance = Number(merchant?.balance_mad ?? 0);
+
   return (
-    <div className="min-h-screen bg-cream text-ink flex">
-      <aside className="w-64 border-r border-sand p-6 flex flex-col gap-1">
-        <Link href="/" className="serif text-2xl tracking-tightest mb-8">snailon</Link>
-        <p className="mono text-[10px] uppercase tracking-[0.2em] text-clay">balance</p>
-        <p className="serif text-3xl tracking-tightest mb-1">
-          {(merchant?.balance_mad ?? 0).toFixed(2)}{" "}
-          <span className="text-base text-clay">MAD</span>
-        </p>
-        <Link href="/dashboard/wallet" className="mono text-[11px] uppercase tracking-wider text-terracotta hover:underline">
-          + top up
+    <div className="min-h-screen bg-bg text-ink">
+      {/* DESKTOP — sidebar */}
+      <aside className="hidden lg:flex fixed inset-y-0 left-0 w-64 border-r border-line bg-surface flex-col p-5">
+        <Logo />
+
+        {/* Balance card */}
+        <Link
+          href="/dashboard/wallet"
+          className="card card-interactive mt-7 p-4 group block"
+        >
+          <p className="eyebrow">balance</p>
+          <p className="font-display text-3xl tracking-tight mt-1">
+            {balance.toFixed(2)} <span className="text-base text-muted">MAD</span>
+          </p>
+          <div className="flex items-center justify-between mt-3 pt-3 border-t border-line">
+            <span className="eyebrow eyebrow-accent">+ top up</span>
+            <span className="text-accent group-hover:translate-x-0.5 transition-transform" aria-hidden>→</span>
+          </div>
         </Link>
 
-        <nav className="mt-10 flex flex-col gap-1 mono text-xs uppercase tracking-[0.18em]">
-          <NavLink href="/dashboard">overview</NavLink>
-          <NavLink href="/dashboard/orders">orders</NavLink>
-          <NavLink href="/dashboard/wallet">wallet</NavLink>
-          <NavLink href="/dashboard/integrations">integrations</NavLink>
-          <NavLink href="/dashboard/products">products</NavLink>
-        </nav>
+        {merchant?.is_founding && (
+          <div className="mt-3 px-3 py-2 rounded-md bg-accent-soft">
+            <p className="eyebrow eyebrow-accent">founding store</p>
+            <p className="text-xs text-accent-deep mt-0.5">+{merchant.founding_bonus_pct}% on every top-up</p>
+          </div>
+        )}
 
-        <div className="mt-auto pt-6 border-t border-sand">
-          <p className="mono text-[10px] uppercase tracking-wider text-clay truncate">
-            {merchant?.business_name ?? merchant?.email ?? user.email}
-          </p>
-          <LogoutButton />
+        <div className="mt-8">
+          <DashNav orientation="vertical" />
+        </div>
+
+        <div className="mt-auto pt-6 border-t border-line">
+          <p className="text-sm font-medium truncate">{merchant?.business_name ?? merchant?.email}</p>
+          <p className="text-xs text-muted truncate">{merchant?.email}</p>
+          <LogoutButton className="mt-2 -ml-2" />
         </div>
       </aside>
-      <main className="flex-1 p-8 md:p-12 overflow-x-hidden">{children}</main>
-    </div>
-  );
-}
 
-function NavLink({ href, children }: { href: string; children: React.ReactNode }) {
-  return (
-    <Link
-      href={href}
-      className="py-2 px-2 -mx-2 hover:bg-sand transition-colors"
-    >
-      {children}
-    </Link>
+      {/* MOBILE — top bar */}
+      <header className="lg:hidden sticky top-0 z-30 bg-bg/95 backdrop-blur border-b border-line">
+        <div className="flex items-center justify-between px-4 py-3">
+          <Logo size="sm" />
+          <Link
+            href="/dashboard/wallet"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-surface border border-line"
+          >
+            <span className="dot bg-accent" />
+            <span className="font-mono text-xs">{balance.toFixed(0)} MAD</span>
+          </Link>
+        </div>
+        <div className="px-4 pb-3">
+          <DashNav orientation="horizontal" />
+        </div>
+      </header>
+
+      {/* CONTENT */}
+      <main className="lg:pl-64">
+        <div className="px-5 sm:px-8 lg:px-10 py-7 sm:py-10 max-w-6xl">
+          {children}
+        </div>
+      </main>
+    </div>
   );
 }

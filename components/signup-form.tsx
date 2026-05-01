@@ -35,7 +35,6 @@ export default function SignupForm() {
       return;
     }
 
-    // Create the merchant row server-side (uses service role to bypass RLS until session is set).
     if (data.user) {
       await fetch("/api/auth/post-signup", {
         method: "POST",
@@ -59,47 +58,68 @@ export default function SignupForm() {
   }
 
   return (
-    <form onSubmit={submit} className="space-y-3">
-      <input
-        type="text"
-        value={biz}
-        onChange={(e) => setBiz(e.target.value)}
-        placeholder="business name"
-        className="w-full bg-transparent border-b border-ink/30 focus:border-terracotta outline-none py-3 placeholder:text-clay/50"
-      />
-      <input
-        type="tel"
-        value={phone}
-        onChange={(e) => setPhone(e.target.value)}
-        placeholder="WhatsApp number"
-        className="w-full bg-transparent border-b border-ink/30 focus:border-terracotta outline-none py-3 placeholder:text-clay/50"
-      />
-      <input
-        type="email"
-        required
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        placeholder="email"
-        className="w-full bg-transparent border-b border-ink/30 focus:border-terracotta outline-none py-3 placeholder:text-clay/50"
-      />
-      <input
-        type="password"
-        required
-        minLength={8}
-        value={pw}
-        onChange={(e) => setPw(e.target.value)}
-        placeholder="password (8+ chars)"
-        className="w-full bg-transparent border-b border-ink/30 focus:border-terracotta outline-none py-3 placeholder:text-clay/50"
-      />
-      <button
-        type="submit"
-        disabled={loading}
-        className="w-full bg-ink text-cream py-3 mono text-xs uppercase tracking-[0.2em] hover:bg-terracotta transition-colors disabled:opacity-50 mt-4"
-      >
-        {loading ? "..." : "create account →"}
+    <form onSubmit={submit} className="space-y-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label className="eyebrow block mb-1.5">business</label>
+          <input
+            type="text"
+            value={biz}
+            onChange={(e) => setBiz(e.target.value)}
+            placeholder="Your shop name"
+            className="input"
+            autoFocus
+          />
+        </div>
+        <div>
+          <label className="eyebrow block mb-1.5">whatsapp</label>
+          <input
+            type="tel"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            placeholder="06 / 07..."
+            className="input"
+          />
+        </div>
+      </div>
+      <div>
+        <label className="eyebrow block mb-1.5">email</label>
+        <input
+          type="email"
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="your@email.com"
+          className="input"
+        />
+      </div>
+      <div>
+        <label className="eyebrow block mb-1.5">password</label>
+        <input
+          type="password"
+          required
+          minLength={8}
+          value={pw}
+          onChange={(e) => setPw(e.target.value)}
+          placeholder="At least 8 characters"
+          className="input"
+        />
+      </div>
+      <button type="submit" disabled={loading} className="btn btn-primary w-full mt-2">
+        {loading ? "creating account..." : "Create account"}
+        {!loading && <span aria-hidden>→</span>}
       </button>
-      {err && <p className="text-terracotta text-sm pt-2">{err}</p>}
-      {info && <p className="text-moss text-sm pt-2">{info}</p>}
+      <p className="eyebrow text-center mt-2">25 mad free credit · 5 confirmations on us</p>
+      {err && (
+        <div className="rounded-md bg-[#FFE9E9] border border-[#F4C5C5] p-3">
+          <p className="text-error text-sm">{err}</p>
+        </div>
+      )}
+      {info && (
+        <div className="rounded-md bg-success-soft border border-[#C5E8D5] p-3">
+          <p className="text-success text-sm">{info}</p>
+        </div>
+      )}
     </form>
   );
 }

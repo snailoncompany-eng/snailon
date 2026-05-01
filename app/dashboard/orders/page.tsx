@@ -5,7 +5,11 @@ export default async function OrdersPage() {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   const admin = createAdminClient();
-  const { data: merchant } = await admin.from("merchants").select("id").eq("user_id", user!.id).maybeSingle();
+  const { data: merchant } = await admin
+    .from("merchants")
+    .select("id")
+    .eq("user_id", user!.id)
+    .maybeSingle();
   const { data: orders } = await admin
     .from("orders")
     .select("*")
@@ -14,65 +18,112 @@ export default async function OrdersPage() {
     .limit(100);
 
   return (
-    <div>
-      <p className="mono text-[10px] uppercase tracking-[0.25em] text-terracotta">orders</p>
-      <h1 className="serif text-5xl tracking-tightest mt-2">All orders.</h1>
+    <div className="space-y-8">
+      <header>
+        <p className="eyebrow eyebrow-accent">orders</p>
+        <h1 className="headline text-4xl mt-2">All orders</h1>
+        <p className="text-muted mt-1">
+          {orders?.length ?? 0} {(orders?.length ?? 0) === 1 ? "order" : "orders"} · last 100 shown
+        </p>
+      </header>
 
-      <div className="mt-10 border border-sand overflow-x-auto">
-        <table className="w-full text-sm min-w-[800px]">
-          <thead className="bg-sand mono text-[10px] uppercase tracking-wider text-clay">
-            <tr>
-              <th className="text-left p-3">when</th>
-              <th className="text-left p-3">customer</th>
-              <th className="text-left p-3">product</th>
-              <th className="text-right p-3">total</th>
-              <th className="text-right p-3">status</th>
-              <th className="text-left p-3">summary</th>
-            </tr>
-          </thead>
-          <tbody>
-            {(orders ?? []).map((o: any) => (
-              <tr key={o.id} className="border-t border-sand align-top">
-                <td className="p-3 mono text-[11px] text-clay">
-                  {new Date(o.created_at).toLocaleString()}
-                </td>
-                <td className="p-3">
-                  {o.customer_name ?? "—"}
-                  <br />
-                  <span className="mono text-[11px] text-clay">{o.customer_phone}</span>
-                  {o.customer_address && (
-                    <>
-                      <br />
-                      <span className="text-[11px] text-clay">{o.customer_address}</span>
-                    </>
-                  )}
-                </td>
-                <td className="p-3">
-                  {o.product_name}
-                  <br />
-                  <span className="mono text-[11px] text-clay">x {o.quantity}</span>
-                </td>
-                <td className="p-3 text-right mono">
-                  {Number(o.product_price_mad * o.quantity).toFixed(2)}
-                </td>
-                <td className="p-3 text-right">
-                  <span className="mono text-[10px] uppercase tracking-wider px-2 py-1 bg-sand text-clay">
-                    {o.status}
-                  </span>
-                </td>
-                <td className="p-3 text-[12px] text-clay max-w-xs">{o.ai_summary ?? "—"}</td>
-              </tr>
+      {(!orders || orders.length === 0) ? (
+        <div className="card p-12 text-center">
+          <p className="text-muted">No orders yet.</p>
+          <p className="text-sm text-subtle mt-2">
+            Orders will appear here as soon as your store starts receiving them.
+          </p>
+        </div>
+      ) : (
+        <>
+          {/* Desktop table */}
+          <div className="card overflow-hidden hidden sm:block">
+            <div className="overflow-x-auto">
+              <table className="table-clean">
+                <thead>
+                  <tr>
+                    <th>When</th>
+                    <th>Customer</th>
+                    <th>Product</th>
+                    <th className="text-right">Total</th>
+                    <th className="text-right">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {orders.map((o: any) => (
+                    <tr key={o.id} className="hover:bg-[rgba(10,10,10,0.015)] transition-colors">
+                      <td>
+                        <div className="text-sm">{formatDate(o.created_at)}</div>
+                        <div className="font-mono text-xs text-subtle">{formatTime(o.created_at)}</div>
+                      </td>
+                      <td>
+                        <div className="font-medium">{o.customer_name ?? "—"}</div>
+                        <div className="font-mono text-xs text-muted">{o.customer_phone}</div>
+                        {o.customer_address && (
+                          <div className="text-xs text-subtle truncate max-w-[200px]">{o.customer_address}</div>
+                        )}
+                      </td>
+                      <td>
+                        <div>{o.product_name}</div>
+                        <div className="font-mono text-xs text-muted">x {o.quantity}</div>
+                      </td>
+                      <td className="text-right font-mono">
+                        {(Number(o.product_price_mad) * o.quantity).toFixed(0)} MAD
+                      </td>
+                      <td className="text-right">
+                        <StatusPill status={o.status} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Mobile card list */}
+          <div className="space-y-3 sm:hidden">
+            {orders.map((o: any) => (
+              <div key={o.id} className="card p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-medium truncate">{o.customer_name ?? o.customer_phone}</p>
+                    <p className="font-mono text-xs text-muted truncate">{o.customer_phone}</p>
+                  </div>
+                  <StatusPill status={o.status} />
+                </div>
+                <div className="flex items-center justify-between mt-3 pt-3 border-t border-line">
+                  <p className="text-sm text-muted truncate pr-3">{o.product_name}</p>
+                  <p className="font-mono text-sm whitespace-nowrap">
+                    {(Number(o.product_price_mad) * o.quantity).toFixed(0)} MAD
+                  </p>
+                </div>
+                <p className="font-mono text-[11px] text-subtle mt-2">
+                  {formatDate(o.created_at)} · {formatTime(o.created_at)}
+                </p>
+              </div>
             ))}
-            {(!orders || orders.length === 0) && (
-              <tr>
-                <td colSpan={6} className="p-8 text-center text-clay">
-                  No orders yet.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+          </div>
+        </>
+      )}
     </div>
   );
+}
+
+function StatusPill({ status }: { status: string }) {
+  const map: Record<string, string> = {
+    confirmed: "pill-success",
+    pending: "pill-muted",
+    confirming: "pill-accent",
+    unconfirmed: "pill-warning",
+    cancelled: "pill-muted",
+    failed: "pill-muted",
+  };
+  return <span className={`pill ${map[status] ?? "pill-muted"}`}>{status}</span>;
+}
+
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
+}
+function formatTime(iso: string) {
+  return new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
 }
