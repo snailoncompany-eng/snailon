@@ -45,5 +45,7 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/orders/create|api/whop/webhook|api/webhooks).*)"],
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|api/orders/create|api/whop/webhook|api/webhooks|api/pixel|api/integrations/woo-callback|api/integrations/shopify-callback|pixel).*)",
+  ],
 };

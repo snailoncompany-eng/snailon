@@ -1,6 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { listStorePlatforms, listCarrierPlatforms } from "@/lib/integrations/registry";
 import IntegrationsClient from "@/components/integrations-client";
 
 export default async function IntegrationsPage() {
@@ -16,8 +15,11 @@ export default async function IntegrationsPage() {
   const [{ data: stores }, { data: carriers }] = await Promise.all([
     admin
       .from("store_connections")
-      .select("id, platform, store_name, store_url, last_synced_at, product_count, is_active, created_at")
-      .eq("merchant_id", merchant?.id),
+      .select(
+        "id, platform, detected_platform, store_name, store_url, last_synced_at, product_count, capabilities, pending_step, pixel_token, is_active, created_at"
+      )
+      .eq("merchant_id", merchant?.id)
+      .order("created_at", { ascending: false }),
     admin
       .from("carrier_connections")
       .select("id, platform, is_active, created_at, metadata")
@@ -28,16 +30,14 @@ export default async function IntegrationsPage() {
     <div>
       <p className="mono text-[10px] uppercase tracking-[0.25em] text-terracotta">integrations</p>
       <h1 className="serif text-5xl tracking-tightest mt-2">
-        Connect your <span className="italic">store.</span>
+        Connect your store. <span className="italic text-terracotta">In seconds.</span>
       </h1>
       <p className="text-clay mt-2 max-w-xl">
-        Snailon syncs your catalog and ingests every new order in real time.
-        Confirmed orders flow to your delivery partner automatically.
+        Paste your store address. We do the rest — find your products, sync
+        your orders, recover abandoned carts, line up delivery.
       </p>
 
       <IntegrationsClient
-        availableStores={listStorePlatforms()}
-        availableCarriers={listCarrierPlatforms()}
         connectedStores={stores ?? []}
         connectedCarriers={carriers ?? []}
       />
