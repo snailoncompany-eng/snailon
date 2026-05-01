@@ -1,16 +1,61 @@
 // Snailon pricing — single source of truth.
-// Per-confirmed-order charge, deducted from merchant wallet.
 
 export const PRICING = {
-  // ~$0.50 USD ~= 5 MAD. Confirmed-only billing (no charge on noise/ask).
+  // Per-confirmed-order charge, deducted from merchant wallet.
   pricePerConfirmedOrderMad: Number(process.env.PRICE_PER_CONFIRMED_MAD ?? 5),
   // Free credits for new merchants on signup (in MAD).
   signupBonusMad: Number(process.env.SIGNUP_BONUS_MAD ?? 25),
-  // Top-up tiers (frontend will create Whop checkouts for these).
-  topupTiers: [
-    { mad: 100, label: "100 MAD", orders: 20 },
-    { mad: 500, label: "500 MAD", orders: 100 },
-    { mad: 1000, label: "1 000 MAD", orders: 200 },
-    { mad: 5000, label: "5 000 MAD", orders: 1000 },
-  ],
+  // Pre-launch founding-store: +50% on every top-up forever.
+  foundingBonusPct: Number(process.env.FOUNDING_BONUS_PCT ?? 50),
 };
+
+export type Tier = {
+  id: string;
+  label: string;
+  amountMad: number;
+  bonusMad: number;
+  isFounding: boolean;
+  // What we display to the user
+  totalCreditMad: number;
+  bonusPct: number;
+  // Marketing copy
+  tagline?: string;
+  highlight?: boolean;
+};
+
+const standard = (amount: number): Tier => ({
+  id: `std_${amount}`,
+  label: `${amount} MAD`,
+  amountMad: amount,
+  bonusMad: 0,
+  isFounding: false,
+  totalCreditMad: amount,
+  bonusPct: 0,
+});
+
+const founding = (amount: number): Tier => {
+  const pct = PRICING.foundingBonusPct;
+  const bonus = Math.round(amount * (pct / 100));
+  return {
+    id: `founding_${amount}`,
+    label: "Founding Store",
+    amountMad: amount,
+    bonusMad: bonus,
+    isFounding: true,
+    totalCreditMad: amount + bonus,
+    bonusPct: pct,
+    tagline: `+${pct}% bonus on this top-up — and on every future top-up, forever`,
+    highlight: true,
+  };
+};
+
+export const TIERS: Tier[] = [
+  standard(200),
+  standard(500),
+  standard(1000),
+  founding(1000),
+];
+
+export function findTier(id: string): Tier | undefined {
+  return TIERS.find((t) => t.id === id);
+}

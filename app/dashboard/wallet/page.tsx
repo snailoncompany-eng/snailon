@@ -1,7 +1,7 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { PRICING } from "@/lib/pricing";
-import TopupButton from "@/components/topup-button";
 
 export default async function WalletPage() {
   const supabase = createClient();
@@ -30,12 +30,27 @@ export default async function WalletPage() {
       <p className="text-clay mt-2">
         Each confirmed order costs <b>{PRICING.pricePerConfirmedOrderMad} MAD</b>.
       </p>
+      {merchant?.is_founding && (
+        <p className="mono text-xs uppercase tracking-[0.18em] text-terracotta mt-2">
+          ⌬ founding store · +{merchant.founding_bonus_pct}% on every top-up, forever
+        </p>
+      )}
 
-      <h2 className="serif text-2xl tracking-tightest mt-12">Top up.</h2>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
-        {PRICING.topupTiers.map((t) => (
-          <TopupButton key={t.mad} mad={t.mad} label={t.label} orders={t.orders} />
-        ))}
+      <div className="mt-8 flex gap-3">
+        <Link
+          href="/checkout"
+          className="inline-block bg-ink text-cream px-6 py-3 mono text-xs uppercase tracking-[0.2em] hover:bg-terracotta transition-colors"
+        >
+          + top up wallet →
+        </Link>
+        {!merchant?.is_founding && (
+          <Link
+            href="/checkout"
+            className="inline-block border border-terracotta text-terracotta px-6 py-3 mono text-xs uppercase tracking-[0.2em] hover:bg-terracotta hover:text-cream transition-colors"
+          >
+            ⌬ claim founding offer
+          </Link>
+        )}
       </div>
 
       <h2 className="serif text-2xl tracking-tightest mt-16">Transactions.</h2>

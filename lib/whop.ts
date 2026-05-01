@@ -1,16 +1,14 @@
 import crypto from "node:crypto";
 
-// Verifies a Whop webhook signature.
-// Whop sends a header (commonly `whop-signature` or similar) containing
-// an HMAC SHA-256 of the raw request body using your webhook secret.
-// We compute and constant-time compare.
+const WHOP_API_BASE = "https://api.whop.com/api";
+const WHOP_CHECKOUT_CURRENCY = (process.env.WHOP_CHECKOUT_CURRENCY ?? "mad").toLowerCase();
+
+// ---------- Webhook signature verification ----------
 export function verifyWhopSignature(rawBody: string, signatureHeader: string | null): boolean {
   const secret = process.env.WHOP_WEBHOOK_SECRET;
   if (!secret || !signatureHeader) return false;
 
   const computed = crypto.createHmac("sha256", secret).update(rawBody, "utf8").digest("hex");
-
-  // Header may be just the hex digest, or "sha256=<hex>", handle both.
   const provided = signatureHeader.includes("=") ? signatureHeader.split("=")[1] : signatureHeader;
 
   try {
@@ -23,50 +21,64 @@ export function verifyWhopSignature(rawBody: string, signatureHeader: string | n
   }
 }
 
-// Creates a Whop checkout session via their API.
-// Docs: https://dev.whop.com — uses /v5/payments/charge or hosted checkout.
-// We use the simpler hosted-checkout pattern: build a URL the user opens.
-export async function createWhopCheckout(opts: {
+// ---------- Dynamic plan creation for embedded checkout ----------
+// Creates a hidden one-time-payment plan tied to the existing Snailon product.
+// The plan price is whatever amount the user picked. Metadata captures
+// merchant_id + mad_amount + bonus_mad + is_founding so the webhook can
+// credit correctly.
+//
+// The returned plan_id is what the embedded checkout iframe needs.
+export type CreatePlanArgs = {
   merchantId: string;
   amountMad: number;
-  productId?: string;
-}): Promise<{ url: string }> {
-  const apiKey = process.env.WHOP_API_KEY;
-  const productId = opts.productId ?? process.env.WHOP_PRODUCT_ID;
-  const planId = process.env.WHOP_PLAN_ID;
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://snailon.com";
-  if (!apiKey) throw new Error("WHOP_API_KEY not set");
+  bonusMad: number;
+  isFounding: boolean;
+  tierLabel: string;
+};
 
-  // Approach: create a checkout session for the configured plan,
-  // attaching `merchant_id` + `mad_amount` as metadata so the webhook
-  // can credit the right wallet.
-  const res = await fetch("https://api.whop.com/api/v5/checkout_sessions", {
+export async function createDynamicPlan(args: CreatePlanArgs): Promise<{
+  plan_id: string;
+  direct_link: string;
+}> {
+  const apiKey = process.env.WHOP_API_KEY;
+  const productId = process.env.WHOP_PRODUCT_ID;
+  if (!apiKey) throw new Error("WHOP_API_KEY not set");
+  if (!productId) throw new Error("WHOP_PRODUCT_ID not set");
+
+  const body = {
+    product_id: productId,
+    plan_type: "one_time",
+    release_method: "buy_now",
+    visibility: "hidden",
+    initial_price: args.amountMad,
+    base_currency: WHOP_CHECKOUT_CURRENCY,
+    internal_notes: `snailon|merchant=${args.merchantId}|mad=${args.amountMad}|bonus=${args.bonusMad}|founding=${args.isFounding}|tier=${args.tierLabel}`,
+    metadata: {
+      merchant_id: args.merchantId,
+      mad_amount: String(args.amountMad),
+      bonus_mad: String(args.bonusMad),
+      is_founding: args.isFounding ? "true" : "false",
+      tier_label: args.tierLabel,
+      purpose: "wallet_topup",
+    },
+  };
+
+  const res = await fetch(`${WHOP_API_BASE}/v2/plans`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${apiKey}`,
     },
-    body: JSON.stringify({
-      plan_id: planId,
-      metadata: {
-        merchant_id: opts.merchantId,
-        mad_amount: String(opts.amountMad),
-        purpose: "wallet_topup",
-      },
-      redirect_url: `${baseUrl}/dashboard/wallet?status=success`,
-    }),
+    body: JSON.stringify(body),
   });
 
   if (!res.ok) {
-    // Fallback: return a generic Whop product URL with metadata in query
-    // so at minimum we have a clickable path.
-    const productUrl = `https://whop.com/checkout/${planId}?metadata[merchant_id]=${encodeURIComponent(
-      opts.merchantId
-    )}&metadata[mad_amount]=${opts.amountMad}`;
-    return { url: productUrl };
+    const text = await res.text();
+    throw new Error(`Whop plan creation failed (${res.status}): ${text}`);
   }
   const json = await res.json();
-  const url = json?.purchase_url ?? json?.checkout_url ?? json?.url;
-  if (!url) throw new Error("Whop did not return a checkout URL");
-  return { url };
+  if (!json?.id) {
+    throw new Error("Whop did not return a plan id");
+  }
+  return { plan_id: json.id, direct_link: json.direct_link };
 }
