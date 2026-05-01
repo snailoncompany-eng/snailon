@@ -2,14 +2,18 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { TIERS, PRICING, type Tier } from "@/lib/pricing";
-import { createDynamicPlan } from "@/lib/whop";
+import { TIERS, type Tier } from "@/lib/pricing";
+import { createCheckoutSession } from "@/lib/whop";
 import CheckoutClient from "@/components/checkout/checkout-client";
-import { Logo } from "@/components/ui/logo";
 
 export const dynamic = "force-dynamic";
 
-type PreparedTier = Tier & { planId: string | null; planError: string | null };
+type PreparedTier = Tier & {
+  sessionId: string | null;
+  planId: string | null;
+  purchaseUrl: string | null;
+  error: string | null;
+};
 
 export default async function CheckoutPage() {
   const supabase = createClient();
@@ -27,64 +31,80 @@ export default async function CheckoutPage() {
 
   const visibleTiers = TIERS.filter((t) => !(t.isFounding && merchant.is_founding));
 
+  // Pre-create all sessions in parallel server-side, before HTML is sent.
   const prepared: PreparedTier[] = await Promise.all(
     visibleTiers.map(async (tier): Promise<PreparedTier> => {
       try {
-        const { plan_id } = await createDynamicPlan({
+        const session = await createCheckoutSession({
           merchantId: merchant.id,
           amountMad: tier.amountMad,
           bonusMad: tier.bonusMad,
           isFounding: tier.isFounding,
           tierLabel: tier.label,
         });
-        return { ...tier, planId: plan_id, planError: null };
+        return {
+          ...tier,
+          sessionId: session.session_id,
+          planId: session.plan_id,
+          purchaseUrl: session.purchase_url,
+          error: null,
+        };
       } catch (e: any) {
-        return { ...tier, planId: null, planError: e.message ?? "plan creation failed" };
+        return {
+          ...tier,
+          sessionId: null,
+          planId: null,
+          purchaseUrl: null,
+          error: e.message ?? "session creation failed",
+        };
       }
     })
   );
 
-  const balance = Number(merchant.balance_mad ?? 0);
-
   return (
-    <main className="min-h-screen bg-bg text-ink">
+    <main className="min-h-screen bg-cream text-ink">
       <link rel="preconnect" href="https://js.whop.com" crossOrigin="" />
       <link rel="preconnect" href="https://api.whop.com" crossOrigin="" />
       <link rel="dns-prefetch" href="https://whop.com" />
       <link rel="preload" as="script" href="https://js.whop.com/static/checkout/loader.js" />
 
-      <nav className="px-5 sm:px-8 lg:px-12 py-5 flex items-center justify-between max-w-7xl mx-auto border-b border-line">
-        <Logo />
-        <Link href="/dashboard" className="btn btn-ghost text-sm">
-          ← Back to dashboard
+      <nav className="flex items-center justify-between px-6 md:px-12 py-6 border-b border-sand">
+        <Link href="/" className="serif text-2xl tracking-tightest">
+          snailon
+        </Link>
+        <Link
+          href="/dashboard"
+          className="mono text-[11px] uppercase tracking-[0.2em] text-clay hover:text-terracotta"
+        >
+          ← back
         </Link>
       </nav>
 
-      <section className="px-5 sm:px-8 lg:px-12 py-10 sm:py-14 max-w-6xl mx-auto">
-        <div className="max-w-2xl">
-          <p className="eyebrow eyebrow-accent">top up wallet</p>
-          <h1 className="headline text-4xl sm:text-6xl mt-2">
-            Add credit. <span className="italic text-accent">Pay in seconds.</span>
-          </h1>
-          <p className="mt-4 text-muted">
-            Current balance: <span className="text-ink font-medium">{balance.toFixed(2)} MAD</span>
-            {merchant.is_founding && (
-              <>
-                {" "}·{" "}
-                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-accent-soft">
-                  <span className="dot bg-accent" />
-                  <span className="eyebrow eyebrow-accent !text-[10px]">founding · +{merchant.founding_bonus_pct}%</span>
-                </span>
-              </>
-            )}
-          </p>
-        </div>
+      <section className="px-6 md:px-12 pt-10 md:pt-16 pb-20 max-w-6xl mx-auto">
+        <p className="mono text-[10px] uppercase tracking-[0.25em] text-terracotta">
+          ⌬ &nbsp; top up wallet
+        </p>
+        <h1 className="serif text-5xl md:text-7xl tracking-tightest leading-[0.95] mt-2">
+          Add credit. <span className="italic text-terracotta">Pay in seconds.</span>
+        </h1>
+        <p className="mt-4 text-clay max-w-xl">
+          Current balance:{" "}
+          <b className="text-ink">{Number(merchant.balance_mad ?? 0).toFixed(2)} MAD</b>
+          {merchant.is_founding && (
+            <>
+              {" "}·{" "}
+              <span className="mono text-[11px] uppercase tracking-wider text-terracotta">
+                founding +{merchant.founding_bonus_pct}% on every top-up
+              </span>
+            </>
+          )}
+        </p>
 
         <CheckoutClient
           tiers={prepared}
           merchantEmail={merchant.email}
           merchantBusinessName={merchant.business_name}
-          initialBalance={balance}
+          initialBalance={Number(merchant.balance_mad ?? 0)}
           isAlreadyFounding={!!merchant.is_founding}
         />
       </section>

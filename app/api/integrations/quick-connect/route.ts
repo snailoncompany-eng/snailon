@@ -62,7 +62,7 @@ export async function POST(req: Request) {
       {
         merchant_id: merchant.id,
         platform: platformForRow,
-        store_url: detection.storeUrl,
+        store_url: detection.storeUrl ?? "",
         store_name: detection.storeName ?? detection.hostname,
         credentials: {},
         is_active: true,

@@ -59,7 +59,7 @@ export async function POST(req: Request) {
         {
           merchant_id: merchant.id,
           platform,
-          store_url: storeUrl,
+          store_url: storeUrl ?? "",
           store_name: test.storeName,
           external_store_id: test.externalStoreId ?? null,
           credentials,

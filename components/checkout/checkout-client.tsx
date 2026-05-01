@@ -9,7 +9,12 @@ const WhopCheckoutEmbed = dynamic(
   { ssr: false, loading: () => <CheckoutSkeleton /> }
 );
 
-type PreparedTier = Tier & { planId: string | null; planError: string | null };
+type PreparedTier = Tier & {
+  sessionId: string | null;
+  planId: string | null;
+  purchaseUrl: string | null;
+  error: string | null;
+};
 
 type Phase =
   | { kind: "picking" }
@@ -58,8 +63,8 @@ export default function CheckoutClient({
   // ---- Picker ----
   if (phase.kind === "picking" && selected) {
     return (
-      <div className="mt-10 sm:mt-12 space-y-8">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="mt-12">
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
           {tiers.map((tier) => (
             <TierCard
               key={tier.id}
@@ -71,32 +76,37 @@ export default function CheckoutClient({
         </div>
 
         {isAlreadyFounding && (
-          <p className="eyebrow text-muted">
-            you're already a founding store — every top-up gets +50% automatically.
+          <p className="mono text-xs uppercase tracking-[0.18em] text-clay mt-6">
+            you're already a founding store — every top-up gets the +50% automatically.
           </p>
         )}
 
-        <div className="grid lg:grid-cols-[1.1fr_2fr] gap-6 lg:gap-8 items-start">
-          <SummaryCard tier={selected} email={merchantEmail} businessName={merchantBusinessName} />
+        <div className="mt-12 grid md:grid-cols-[1.1fr_2fr] gap-8 items-start">
+          <SummaryCard
+            tier={selected}
+            email={merchantEmail}
+            businessName={merchantBusinessName}
+          />
           <div>
-            <div className="flex items-center gap-2 mb-3">
-              <span className="dot bg-success" />
-              <p className="eyebrow">secure payment · powered by whop</p>
-            </div>
+            <p className="mono text-[10px] uppercase tracking-[0.2em] text-clay mb-3">
+              ⌬ ready to pay · powered by whop
+            </p>
             <button
-              onClick={() => selected.planId && setPhase({ kind: "paying", tier: selected })}
-              disabled={!selected.planId}
-              className="btn btn-primary w-full text-base py-4"
+              onClick={() => selected.sessionId && setPhase({ kind: "paying", tier: selected })}
+              disabled={!selected.sessionId}
+              className="w-full bg-ink text-cream py-5 mono text-sm uppercase tracking-[0.2em] hover:bg-terracotta transition-colors disabled:opacity-40"
             >
-              {selected.planError ? "Couldn't prepare checkout — refresh" : `Pay ${selected.amountMad} MAD`}
-              {!selected.planError && <span aria-hidden>→</span>}
+              {selected.error
+                ? "couldn't prepare checkout — refresh"
+                : `pay ${selected.amountMad} MAD →`}
             </button>
-            {selected.planError && <p className="text-error text-xs mt-2 font-mono">{selected.planError}</p>}
-            <div className="mt-6 space-y-2 text-xs text-muted">
-              <TrustLine>Your card is processed by Whop. Snailon never sees card details.</TrustLine>
-              <TrustLine>All communication happens on snailon.com.</TrustLine>
-              <TrustLine>Wallet credit is non-refundable but never expires.</TrustLine>
-            </div>
+            {selected.error && (
+              <p className="text-terracotta text-xs mt-2 mono">{selected.error}</p>
+            )}
+            <p className="mono text-[10px] uppercase tracking-[0.18em] text-clay mt-6 leading-relaxed">
+              your card is processed by whop. snailon never sees card details.
+              all communications happen on snailon.com.
+            </p>
           </div>
         </div>
       </div>
@@ -107,26 +117,30 @@ export default function CheckoutClient({
   if (phase.kind === "paying") {
     const tier = phase.tier;
     return (
-      <div className="mt-10 sm:mt-12 grid lg:grid-cols-[1.1fr_2fr] gap-6 lg:gap-8 items-start">
-        <SummaryCard tier={tier} email={merchantEmail} businessName={merchantBusinessName} />
+      <div className="mt-12 grid md:grid-cols-[1.1fr_2fr] gap-8 items-start">
+        <SummaryCard
+          tier={tier}
+          email={merchantEmail}
+          businessName={merchantBusinessName}
+        />
         <div>
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <span className="dot bg-success" />
-              <p className="eyebrow">secure payment</p>
-            </div>
+          <div className="flex items-baseline justify-between mb-3">
+            <p className="mono text-[10px] uppercase tracking-[0.2em] text-clay">
+              ⌬ secure payment
+            </p>
             <button
               onClick={() => setPhase({ kind: "picking" })}
-              className="btn-link text-xs text-muted hover:text-ink"
+              className="mono text-[10px] uppercase tracking-[0.18em] text-clay hover:text-terracotta"
             >
               ← change amount
             </button>
           </div>
-          <div className="card p-0 overflow-hidden">
-            {tier.planId ? (
+
+          <div className="border border-sand bg-cream">
+            {tier.sessionId ? (
               <WhopCheckoutEmbed
-                key={tier.planId}
-                planId={tier.planId}
+                key={tier.sessionId}
+                sessionId={tier.sessionId}
                 theme="light"
                 hideEmail
                 disableEmail
@@ -134,7 +148,7 @@ export default function CheckoutClient({
                 hidePrice
                 hideTermsAndConditions
                 skipRedirect
-                onComplete={async (_planId, receiptId) => {
+                onComplete={(_planId, receiptId) => {
                   const optimistic = balanceRef.current + tier.totalCreditMad;
                   balanceRef.current = optimistic;
                   setBalance(optimistic);
@@ -146,8 +160,9 @@ export default function CheckoutClient({
               <CheckoutSkeleton />
             )}
           </div>
-          <p className="eyebrow mt-4">
-            paying as <span className="text-ink">{merchantEmail}</span>
+
+          <p className="mono text-[10px] uppercase tracking-[0.18em] text-clay mt-4">
+            paying as <b className="text-ink">{merchantEmail}</b>
           </p>
         </div>
       </div>
@@ -158,63 +173,50 @@ export default function CheckoutClient({
   if (phase.kind === "success") {
     const tier = phase.tier;
     return (
-      <div className="mt-12 max-w-xl mx-auto text-center animate-rise">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-success-soft mb-6">
-          <span className="text-success text-3xl leading-none">✓</span>
-        </div>
-        <p className="eyebrow eyebrow-accent">payment received</p>
-        <h2 className="headline text-4xl sm:text-5xl mt-2">
+      <div className="mt-16 max-w-xl mx-auto text-center">
+        <div className="serif text-7xl tracking-tightest text-terracotta">✓</div>
+        <p className="mono text-[10px] uppercase tracking-[0.25em] text-terracotta mt-4">
+          payment received
+        </p>
+        <h2 className="serif text-5xl tracking-tightest mt-2">
           Mar7ba <span className="italic">bik.</span>
         </h2>
-        <p className="text-muted mt-3">
-          Your wallet now holds <span className="text-ink font-medium">{balance.toFixed(2)} MAD</span> — enough for{" "}
-          <span className="text-ink font-medium">{Math.floor(balance / 5)}</span> confirmations.
+        <p className="text-clay mt-3">
+          Your wallet now holds{" "}
+          <b className="text-ink">{balance.toFixed(2)} MAD</b>{" "}— enough for{" "}
+          <b className="text-ink">{Math.floor(balance / 5)}</b> confirmations.
         </p>
         {tier.bonusMad > 0 && (
-          <div className="inline-flex items-center gap-2 mt-3 px-3 py-1.5 rounded-full bg-accent-soft">
-            <span className="dot bg-accent" />
-            <span className="eyebrow eyebrow-accent">+{tier.bonusMad} MAD bonus applied</span>
-          </div>
+          <p className="mono text-[11px] uppercase tracking-[0.18em] text-terracotta mt-3">
+            +{tier.bonusMad} MAD bonus applied
+          </p>
         )}
 
-        <div className="mt-8 flex gap-3 justify-center flex-wrap">
-          <a href="/dashboard" className="btn btn-primary">
-            Go to dashboard <span aria-hidden>→</span>
+        <div className="mt-10 flex gap-3 justify-center">
+          <a
+            href="/dashboard"
+            className="bg-ink text-cream px-6 py-3 mono text-xs uppercase tracking-[0.2em] hover:bg-terracotta transition-colors"
+          >
+            go to dashboard →
           </a>
-          <button onClick={() => window.location.reload()} className="btn btn-secondary">
-            Top up again
+          <button
+            onClick={() => window.location.reload()}
+            className="border border-ink px-6 py-3 mono text-xs uppercase tracking-[0.2em] hover:bg-sand transition-colors"
+          >
+            top up again
           </button>
         </div>
 
         {phase.receiptId && (
-          <p className="font-mono text-[11px] text-subtle mt-8 break-all">receipt · {phase.receiptId}</p>
+          <p className="mono text-[9px] uppercase tracking-[0.18em] text-clay/70 mt-8">
+            receipt · {phase.receiptId}
+          </p>
         )}
       </div>
     );
   }
 
   return null;
-}
-
-function TrustLine({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="flex items-start gap-2">
-      <svg
-        width="14"
-        height="14"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        className="text-success shrink-0 mt-0.5"
-      >
-        <polyline points="20 6 9 17 4 12" />
-      </svg>
-      <span>{children}</span>
-    </div>
-  );
 }
 
 function TierCard({
@@ -227,31 +229,45 @@ function TierCard({
   onClick: () => void;
 }) {
   const orders = Math.floor(tier.totalCreditMad / 5);
-  const ready = !!tier.planId;
+  const ready = !!tier.sessionId;
+  const baseClasses = "relative text-left p-5 border transition-all duration-150";
+  const stateClasses = selected
+    ? "border-ink bg-ink text-cream shadow-[4px_4px_0_0_rgba(184,68,46,1)]"
+    : tier.highlight
+    ? "border-terracotta hover:bg-sand"
+    : "border-sand hover:border-ink";
   return (
-    <button
-      onClick={onClick}
-      disabled={!ready}
-      className={`card text-left p-4 sm:p-5 relative transition-all duration-150 ${
-        selected ? "card-selected" : "card-interactive"
-      } ${tier.highlight && !selected ? "border-accent" : ""} ${!ready ? "opacity-50 pointer-events-none" : ""}`}
-    >
-      {tier.highlight && (
-        <span className="absolute -top-2.5 left-4 pill pill-accent">pre-launch</span>
+    <button onClick={onClick} disabled={!ready} className={`${baseClasses} ${stateClasses} ${!ready ? "opacity-50" : ""}`}>
+      {tier.highlight && !selected && (
+        <span className="absolute -top-2 left-5 mono text-[9px] uppercase tracking-[0.2em] bg-terracotta text-cream px-2 py-0.5">
+          pre-launch
+        </span>
       )}
-      <p className="eyebrow">{tier.isFounding ? "founding store" : "standard"}</p>
-      <p className="font-display text-3xl sm:text-4xl tracking-tight mt-2">
+      <p
+        className={`mono text-[10px] uppercase tracking-[0.2em] ${
+          selected ? "text-cream/70" : tier.highlight ? "text-terracotta" : "text-clay"
+        }`}
+      >
+        {tier.isFounding ? "founding store" : "standard"}
+      </p>
+      <p className="serif text-4xl tracking-tightest mt-2">
         {tier.amountMad}
-        <span className="text-base text-muted ml-1">MAD</span>
+        <span className={`text-base ml-1 ${selected ? "text-cream/70" : "text-clay"}`}>MAD</span>
       </p>
       {tier.bonusMad > 0 ? (
-        <p className="text-sm text-accent mt-2 font-medium">
-          +{tier.bonusMad} MAD bonus
+        <p className={`mono text-[11px] mt-2 ${selected ? "text-cream" : "text-terracotta"}`}>
+          +{tier.bonusMad} MAD bonus → {tier.totalCreditMad} MAD credit
         </p>
       ) : (
-        <p className="text-xs text-muted mt-2">≈ {orders} confirmations</p>
+        <p className={`mono text-[11px] mt-2 ${selected ? "text-cream/70" : "text-clay"}`}>
+          ≈ {orders} confirmations
+        </p>
       )}
-      {tier.tagline && <p className="text-xs text-muted mt-3 leading-snug">{tier.tagline}</p>}
+      {tier.tagline && (
+        <p className={`text-[12px] mt-3 leading-snug ${selected ? "text-cream/80" : "text-ink"}`}>
+          {tier.tagline}
+        </p>
+      )}
     </button>
   );
 }
@@ -266,37 +282,37 @@ function SummaryCard({
   businessName: string | null;
 }) {
   return (
-    <aside className="card p-5 sm:p-6 h-fit">
-      <p className="eyebrow">order summary</p>
-      <p className="font-display text-3xl tracking-tight mt-2">{tier.label}</p>
-      <hr className="border-line my-4" />
-      <div className="space-y-2 text-sm">
-        <div className="flex justify-between">
-          <span className="text-muted">You pay</span>
-          <span className="font-mono">{tier.amountMad.toFixed(2)} MAD</span>
-        </div>
-        {tier.bonusMad > 0 && (
-          <div className="flex justify-between text-accent">
-            <span>+{tier.bonusPct}% bonus</span>
-            <span className="font-mono">+{tier.bonusMad.toFixed(2)} MAD</span>
-          </div>
-        )}
+    <aside className="border border-sand p-6 h-fit">
+      <p className="mono text-[10px] uppercase tracking-[0.2em] text-clay">order summary</p>
+      <p className="serif text-3xl tracking-tightest mt-2">{tier.label}</p>
+      <hr className="border-sand my-4" />
+      <div className="flex justify-between text-sm">
+        <span>You pay</span>
+        <span className="mono">{tier.amountMad.toFixed(2)} MAD</span>
       </div>
-      <hr className="border-line my-4" />
+      {tier.bonusMad > 0 && (
+        <div className="flex justify-between text-sm text-terracotta mt-1">
+          <span>+{tier.bonusPct}% bonus</span>
+          <span className="mono">+{tier.bonusMad.toFixed(2)} MAD</span>
+        </div>
+      )}
+      <hr className="border-sand my-4" />
       <div className="flex justify-between items-baseline">
-        <span className="eyebrow">credit added</span>
-        <span className="font-display text-2xl tracking-tight">{tier.totalCreditMad.toFixed(2)} MAD</span>
+        <span className="mono text-[10px] uppercase tracking-wider text-clay">credit added</span>
+        <span className="serif text-2xl tracking-tightest">
+          {tier.totalCreditMad.toFixed(2)} MAD
+        </span>
       </div>
       {tier.isFounding && (
-        <p className="eyebrow eyebrow-accent mt-4 leading-relaxed normal-case tracking-normal text-[12px]">
-          + lifetime +{tier.bonusPct}% bonus on every future top-up. One-time, pre-launch only.
+        <p className="mono text-[10px] uppercase tracking-[0.18em] text-terracotta mt-4 leading-relaxed">
+          + lifetime +{tier.bonusPct}% bonus on every future top-up. one-time, pre-launch only.
         </p>
       )}
-      <hr className="border-line my-4" />
+      <hr className="border-sand my-4" />
       <div>
-        <p className="eyebrow mb-1">paying as</p>
-        <p className="text-sm break-all">{email}</p>
-        {businessName && <p className="text-xs text-muted mt-0.5">{businessName}</p>}
+        <p className="mono text-[10px] uppercase tracking-wider text-clay">paying as</p>
+        <p className="text-sm mt-1 break-all">{email}</p>
+        {businessName && <p className="text-[12px] text-clay mt-0.5">{businessName}</p>}
       </div>
     </aside>
   );
@@ -304,16 +320,16 @@ function SummaryCard({
 
 function CheckoutSkeleton() {
   return (
-    <div className="min-h-[520px] p-6 space-y-4">
-      <div className="skeleton h-3 w-1/4" />
-      <div className="skeleton h-12 w-full" />
+    <div className="min-h-[520px] p-6 space-y-4 animate-pulse">
+      <div className="h-3 bg-sand w-1/4" />
+      <div className="h-12 bg-sand" />
       <div className="grid grid-cols-2 gap-3 mt-4">
-        <div className="skeleton h-12" />
-        <div className="skeleton h-12" />
+        <div className="h-12 bg-sand" />
+        <div className="h-12 bg-sand" />
       </div>
-      <div className="skeleton h-3 w-1/3 mt-6" />
-      <div className="skeleton h-12 w-full" />
-      <div className="skeleton h-14 w-full mt-8" />
+      <div className="h-3 bg-sand w-1/3 mt-6" />
+      <div className="h-12 bg-sand" />
+      <div className="h-14 bg-ink/20 mt-8" />
     </div>
   );
 }
