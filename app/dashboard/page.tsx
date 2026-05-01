@@ -33,6 +33,12 @@ export default async function DashboardOverview() {
     {}
   );
 
+  // Has the merchant connected anything?
+  const { count: storeConnCount } = await admin
+    .from("store_connections")
+    .select("*", { count: "exact", head: true })
+    .eq("merchant_id", merchant.id);
+
   const { data: recent } = await admin
     .from("orders")
     .select("id, customer_name, customer_phone, product_name, product_price_mad, status, created_at")
@@ -57,6 +63,26 @@ export default async function DashboardOverview() {
         <Stat label="unconfirmed" value={counts.unconfirmed ?? 0} />
         <Stat label="total" value={(orderStats ?? []).length} />
       </div>
+
+      {(storeConnCount ?? 0) === 0 && (
+        <div className="mt-12 border border-terracotta p-6 flex items-center justify-between flex-wrap gap-4">
+          <div>
+            <p className="mono text-[10px] uppercase tracking-[0.2em] text-terracotta">next step</p>
+            <p className="serif text-2xl tracking-tightest mt-1">
+              Connect your store to start receiving orders.
+            </p>
+            <p className="text-clay text-sm mt-1">
+              YouCan, Shopify, WooCommerce — pick yours, paste credentials, done.
+            </p>
+          </div>
+          <Link
+            href="/dashboard/integrations"
+            className="bg-ink text-cream px-6 py-3 mono text-xs uppercase tracking-[0.2em] hover:bg-terracotta transition-colors"
+          >
+            connect store →
+          </Link>
+        </div>
+      )}
 
       <div className="mt-16">
         <div className="flex items-baseline justify-between">

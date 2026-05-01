@@ -34,6 +34,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           <NavLink href="/dashboard">overview</NavLink>
           <NavLink href="/dashboard/orders">orders</NavLink>
           <NavLink href="/dashboard/wallet">wallet</NavLink>
+          <NavLink href="/dashboard/integrations">integrations</NavLink>
           <NavLink href="/dashboard/products">products</NavLink>
         </nav>
 
