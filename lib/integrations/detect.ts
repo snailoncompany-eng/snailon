@@ -145,7 +145,7 @@ export async function detectPlatform(rawUrl: string): Promise<DetectionResult | 
   // Hostname-based fast path: certain hosts are unambiguous
   const hostSays =
     /\.myshopify\.com$/.test(hostname) ? "shopify"
-    : /\.youcan\.shop$/.test(hostname) ? "youcan"
+    : /\.youcan\.(shop|store)$/.test(hostname) ? "youcan"
     : null;
   if (hostSays) signals.push(`host:${hostSays}`);
 
