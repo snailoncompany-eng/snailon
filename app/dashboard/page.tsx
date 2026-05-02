@@ -103,7 +103,7 @@ export default async function DashboardOverview() {
                 Paste your Shopify, WooCommerce or YouCan URL — we handle the rest.
               </p>
             </div>
-            <Link href="/dashboard/integrations" className="btn btn-primary">
+            <Link href="/dashboard/connect" className="btn btn-primary">
               Connect store <span aria-hidden>→</span>
             </Link>
           </div>

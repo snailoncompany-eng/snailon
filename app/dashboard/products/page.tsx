@@ -33,7 +33,7 @@ export default async function ProductsPage() {
           <p className="text-sm text-muted mt-2 max-w-md mx-auto">
             Connect a store and we'll sync your catalog automatically.
           </p>
-          <Link href="/dashboard/integrations" className="btn btn-primary mt-5">
+          <Link href="/dashboard/connect" className="btn btn-primary mt-5">
             Connect store <span aria-hidden>→</span>
           </Link>
         </div>

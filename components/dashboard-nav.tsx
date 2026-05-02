@@ -12,7 +12,7 @@ export type DashNavItem = {
 export const DASH_NAV: DashNavItem[] = [
   { href: "/dashboard", label: "Overview", icon: <IconHome /> },
   { href: "/dashboard/orders", label: "Orders", icon: <IconBox /> },
-  { href: "/dashboard/integrations", label: "Integrations", icon: <IconLink /> },
+  { href: "/dashboard/connect", label: "Integrations", icon: <IconLink /> },
   { href: "/dashboard/products", label: "Products", icon: <IconTag /> },
   { href: "/dashboard/wallet", label: "Wallet", icon: <IconWallet /> },
 ];
